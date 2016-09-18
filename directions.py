@@ -2,10 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Get driving directions and times from Open Source Routing Machine (OSRM).
-https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md
-
-Resolve coordinates using Google Maps through geopy.
+Get driving directions and times from Google.
 """
 
 from __future__ import print_function, unicode_literals
