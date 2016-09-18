@@ -12,6 +12,11 @@ from __future__ import print_function, unicode_literals
 import requests
 import logging
 import argparse
+import os
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 import geopy
 
@@ -19,107 +24,31 @@ __author__ = "Michael T. Neylon"
 
 # TODO: allow multiple destinations
 
-class Route:
+class GoogleDirections:
     """
-    Use OSRM demo server to find the route between two coordinates,
-    including distance and time.
-    """
-
-    def __init__(self, longitude1, latitude1, longitude2, latitude2,
-                 base_url='https://router.project-osrm.org', service='route',
-                 version='v1', profile='driving'):
-        """
-        :param longitude1: Longitude of start address
-        :type longitude1: float
-        :param latitude1: Latitude of start address
-        :type latitude1 float
-        :param longitude2: Longitude of end address
-        :type longitude2: float
-        :param latitude2: Latitude of end address
-        :type latitude2: float
-        :param base_url: OSRM base url
-        :param service: Service selection for OSRM API. Available options:
-        route, nearest, table, match, trip, tile
-        :type service: str
-        :param version: Version of the api protocol
-        :type version: str
-        :param profile: Mode of transportation
-        :type: str
-        """
-        self.base_url = base_url
-        self.service = service
-        self.version = version
-        self.profile = profile
-        self.longitude1 = str(longitude1)
-        self.latitude1 = str(latitude1)
-        self.longitude2 = str(longitude2)
-        self.latitude2 = str(latitude2)
-
-
-    def build_url(self):
-        """
-        Build a query url for the OSRM api.
-
-        :return: the url as a string
-        """
-        url = "{base_url}/{service}/{version}/{profile}/{long1},{lat1};{" \
-              "long2},{lat2}?overview=false&steps=true"
-        url = url.format(base_url=self.base_url, service=self.service,
-                         version=self.version, profile=self.profile,
-                         long1=self.longitude1, lat1=self.latitude1,
-                         long2=self.longitude2, lat2=self.latitude2)
-        return url
-
-    def query(self):
-        """
-        Request the data from OSRM.
-
-        :return: OSRM response in JSON.
-        """
-        url = self.build_url()
-        result = requests.get(url)
-        return result.json()
-
-
-class Coordinates:
-    """
-    Get the coordinates of a given address using Google Maps through geopy.
+    Get driving directions using google maps api.
     """
 
-    def __init__(self, address):
+    def __init__(self, origin, destination, api_key,
+                 base_url="https://maps.googleapis.com/maps/api/directions"
+                          "/json?"):
         """
-        :param address: street address
-        :type address: str
-        """
-        self.address = address
 
-    def location(self):
+        :param origin:
+        :param destination:
+        :param api_key:
+        :param base_url:
         """
-        Get the resolved address and coordinates for a given street address
-        using Google maps through geopy.
-
-        :return: tuple of location name, longitude, latitude
-        """
-        geolocator = geopy.geocoders.GoogleV3()
-        location = geolocator.geocode(self.address)
-        return [location, location.longitude, location.latitude]
-
-
-class Directions:
-    """
-    Get directions for two street address. Find coordinates through Google and
-    then map a route from OSRM.
-    """
-
-    def __init__(self, source, destination):
-        """
-        :param source: Path source = start address
-        :type source: str
-        :param destination: Path destination = end address
-        :type destination: str
-        """
-        self.source = source
+        self.origin = origin
         self.destination = destination
+        self.api_key = api_key
+        self.base_url = base_url
+
+    def query(self, start, stop):
+        params = {'origin': start, 'destination': stop,
+                  'key': self.api_key}
+        request = requests.get(self.base_url, params=params)
+        return request.json()
 
     def get_coordinates(self, address):
         """
@@ -140,23 +69,97 @@ class Directions:
 
         :return: route data in json format
         """
-        start = self.get_coordinates(self.source)
+        start = self.get_coordinates(self.origin)
         end = self.get_coordinates(self.destination)
         logging.info("Start location: {}".format(start[0]))
         logging.info("End location: {}".format(end[0]))
-        route = Route(longitude1=start[1], latitude1=start[2],
-                      longitude2=start[1], latitude2=end[2])
-        return route.query()
+        start = "{},{}".format(start[1], start[2])
+        end = "{},{}".format(end[1], end[2])
+        response = self.query(start, end)
+        return response
+
+class Coordinates:
+    """
+    Get the coordinates of a given address using Google Maps through geopy.
+    """
+
+    def __init__(self, address):
+        """
+        :param address: street address
+        :type address: str
+        """
+        self.address = address
+
+    def location(self):
+        """
+        Get the resolved address and coordinates for a given street address
+        using Google maps through geopy.
+
+        :return: tuple of location name, latitude, longitude
+        """
+        geolocator = geopy.geocoders.GoogleV3()
+        location = geolocator.geocode(self.address)
+        return [location, location.latitude, location.longitude]
+
+
+class Configuration:
+    """
+    Read in api keys from the configuration file.
+    """
+
+    def __init__(self, config_file='development/config.ini'):
+        """
+        Constructor.
+
+        :param config_file: path to the configuration file.
+        :type config_file: str or unicode
+        """
+        self.config_file = config_file
+        self.google_api_key = self.parse_config()
+
+    def read_config(self):
+        """
+        Check for existence of the development directory and configuration
+        file. Read it in if so.
+
+        :return: configparser.ConfigParser() object
+        """
+        config = configparser.ConfigParser()
+        if os.path.isfile(os.path.abspath(self.config_file)):
+            config.read(self.config_file)
+        else:
+            raise Exception("Create a 'development' directory and copy "
+                            "'config.ini' into it and fill in the values.")
+        return config
+
+    def parse_config(self):
+        """
+        Get the relevant values from the configuration file.
+
+        :return: the google api key
+        """
+        config = self.read_config()
+        if config.has_section('google'):
+            if config.has_option('google', 'apikey'):
+                google_api_key = config.get('google', 'apikey').strip()
+                if google_api_key:
+                    return google_api_key
+            else:
+                logging.error("Malformed configuration file. No option in "
+                              "'google' for 'apikey'")
+        else:
+            logging.error("Malformed configuration file. No section 'google'.")
 
 
 def CLI():
     """
     If this script is run directly, allow it to be used as a command-line tool.
+
     :return: argparser arguments
     """
     parser = argparse.ArgumentParser(description="Driving directions for "
                                                  "given addresses")
-    parser.add_argument("-s", "-start", dest='start', type=str,
+    parser.add_argument("-o", "-origin", dest='origin', type=str,
                         help="Start Address", required=True)
     parser.add_argument("-d", "-destination", dest='destination', type=str,
                         help="Destination Address", required=True)
@@ -169,6 +172,9 @@ if __name__=="__main__":
         level=logging.DEBUG,
         format='%(asctime)s %(levelname)s %(message)s')
 
-    x = Directions(source=arguments.start,
-                   destination=arguments.destination)
-    print(x.run())
+    api_key = Configuration().google_api_key
+
+    y = GoogleDirections(origin=arguments.origin,
+                         destination=arguments.destination, api_key=api_key)
+
+    print(y.run())
