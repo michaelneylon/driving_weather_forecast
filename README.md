@@ -22,16 +22,20 @@ Tools are available to use separately as command-line tools.
 ### [Directions](directions.py)
 
 ```
-usage: directions.py [-h] -o ORIGIN -d DESTINATION
+usage: directions.py [-h] -o ORIGIN -d DESTINATION [-dt DEPARTURE_DATE_TIME]
 
 Driving directions for given addresses
 
+required arguments:
+  -o ORIGIN, --origin ORIGIN
+                        Start Address
+  -d DESTINATION, --destination DESTINATION
+                        Destination Address
 optional arguments:
   -h, --help            show this help message and exit
-  -o ORIGIN, -origin ORIGIN
-                        Start Address
-  -d DESTINATION, -destination DESTINATION
-                        Destination Address
+  -dt DEPARTURE_DATE_TIME, --date_time DEPARTURE_DATE_TIME
+                        Enter departure date and time in the future in the
+                        format YYYY-MM-DDThh:mm in 24 hour format.
 ```
 Note: make sure to quote your addresses. example command:
 `./directions.py -s "123 fake st" -d "456 main st"`
