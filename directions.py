@@ -261,11 +261,11 @@ class Configuration:
         if maps_api_key and time_zone_api_key:
             return maps_api_key, time_zone_api_key
         else:
-            logging.error("Missing value for google api key(s).")
+            raise Exception("Missing value for google api key(s).")
 
 
 
-def CLI():
+def cli():
     """
     If this script is run directly, allow it to be used as a command-line tool.
 
@@ -291,7 +291,7 @@ def CLI():
     return args
 
 if __name__=="__main__":
-    arguments = CLI()
+    arguments = cli()
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s %(levelname)s %(message)s')
