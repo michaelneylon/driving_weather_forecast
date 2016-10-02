@@ -41,3 +41,17 @@ Note: make sure to quote your addresses. example command:
 `./directions.py -s "123 fake st" -d "456 main st"`
 
 ### [Weather](weather.py)
+
+```
+usage: weather.py [-h] -lat LATITUDE -long LONGITUDE
+
+Weather forecast for given location.
+
+required arguments:
+  -lat LATITUDE, --latitude LATITUDE
+                        Latitude
+  -long LONGITUDE, --longitude LONGITUDE
+                        Longitude
+optional arguments:
+  -h, --help            show this help message and exit
+```
